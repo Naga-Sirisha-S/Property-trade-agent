@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Property Portfolio Assistant</title>
+  <style>
+    :root { --primary: #2563eb; --primary-dark: #1d4ed8; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f8fafc;
+      margin: 0; padding: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      background: var(--primary);
+      color: white;
+      padding: 1rem 1.5rem;
+      font-weight: 600;
+      font-size: 1.25rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .message {
+      max-width: 80%;
+      padding: 0.9rem 1.3rem;
+      border-radius: 1.1rem;
+      line-height: 1.4;
+    }
+    .user {
+      align-self: flex-end;
+      background: var(--primary);
+      color: white;
+      border-bottom-right-radius: 0.4rem;
+    }
+    .bot {
+      align-self: flex-start;
+      background: #e2e8f0;
+      border-bottom-left-radius: 0.4rem;
+    }
+    .loading {
+      align-self: flex-start;
+      background: #e2e8f0;
+      padding: 0.9rem 1.3rem;
+      border-radius: 1.1rem;
+      border-bottom-left-radius: 0.4rem;
+      color: #64748b;
+      font-style: italic;
+    }
+    .input-area {
+      padding: 1rem 1.5rem;
+      background: white;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      gap: 0.8rem;
+    }
+    #question {
+      flex: 1;
+      padding: 0.9rem 1.3rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 0.8rem;
+      font-size: 1rem;
+      outline: none;
+    }
+    #question:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+    }
+    button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 0.8rem;
+      padding: 0 1.8rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    button:hover { background: var(--primary-dark); }
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<div class="header">Property Portfolio Assistant</div>
+
+<div id="chat"></div>
+
+<div class="input-area">
+  <input type="text" id="question" placeholder="Ask about trades, holdings, performance..." autocomplete="off"/>
+  <button id="send">Send</button>
+</div>
+
+<script>
+const chat = document.getElementById('chat');
+const input = document.getElementById('question');
+const sendBtn = document.getElementById('send');
+
+function addMsg(text, isUser = false) {
+  const div = document.createElement('div');
+  div.className = `message ${isUser ? 'user' : 'bot'}`;
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showLoading() {
+  const div = document.createElement('div');
+  div.className = 'loading';
+  div.textContent = 'Thinking...';
+  div.id = 'loading';
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function hideLoading() {
+  document.getElementById('loading')?.remove();
+}
+
+async function sendQuestion() {
+  const q = input.value.trim();
+  if (!q) return;
+
+  addMsg(q, true);
+  input.value = '';
+  sendBtn.disabled = true;
+
+  const loading = showLoading();
+
+  try {
+    const res = await fetch('/ask', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question: q})
+    });
+
+    const data = await res.json();
+    hideLoading();
+
+    addMsg(data.answer || "Sorry — something went wrong.");
+  } catch {
+    hideLoading();
+    addMsg("Network error. Please check your connection.");
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+sendBtn.onclick = sendQuestion;
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendQuestion();
+  }
+});
+
+// Welcome message
+addMsg("Hello! I can help you analyze trades, holdings, performance, etc.\nWhat would you like to know?", false);
+</script>
+</body>
+</html>
